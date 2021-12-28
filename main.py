@@ -6,28 +6,12 @@ import train
 import apply
 
 
-# TODO:
-# Save best checkpoint
-# Add eval
-
-
 def main(model, train_loader, test_loader, optimizer, scheduler, device, n_epoch=10):
     for epoch in range(n_epoch):
         print(f"--- start epoch {epoch} ---")
         train.train_epoch(model, optimizer, train_loader, device, epoch, log_interval=10)
         scheduler.step()
-
         apply.test(model, test_loader, device)
-
-        # train.train(
-        #     n_epoch=10,
-        #     model=model,
-        #     optimizer=optimizer,
-        #     train_loader=train_loader,
-        #     device=device,
-        #     log_interval=1,
-        #     scheduler=scheduler,
-        # )
 
 
 if __name__ == "__main__":
