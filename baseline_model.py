@@ -52,18 +52,12 @@ def collate_fn(batch):
     new_sample_rate = 8000
     tensors, targets = [], []
     for waveform, sample_rate, label in batch:
-        sample_rate  # TODO: Use in transform, for resampling
-
         transform = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
 
         tensors += [transform(waveform)]
         targets += [get_data.label_to_idx(label)]
 
     tensors = pad_sequence(tensors)
-    targets = torch.LongTensor(targets)  # torch.stack
+    targets = torch.LongTensor(targets) 
 
     return tensors, targets
-
-
-# placeholder
-
