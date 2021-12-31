@@ -7,45 +7,67 @@ from torchaudio import transforms
 import get_data
 # import subspectram_norm
 
+# TODO: Add dilation to conv
 
-class MagicBlock(nn.Module):
-    def __init__(self, n_input_chan=1, n_output_chan=1):
+
+class NormalBlock(nn.Module):
+    def __init__(self, n_chan):
         super().__init__()
-        self.n_input_chan = n_input_chan
-        self.n_output_chan = n_output_chan
-        self.scale_conv = nn.Conv2d(n_input_chan, n_output_chan, kernel_size=(1, 1))
-        self.scale_bn = nn.BatchNorm2d(n_output_chan)
-        
-        self.vertical_conv1 = nn.Conv2d(n_output_chan, n_output_chan, kernel_size=(3, 1))
-        self.vertical_conv2 = nn.Conv2d(n_output_chan, n_output_chan, kernel_size=(3, 1))
-        self.horizontal_conv1 = nn.Conv1d(n_output_chan, n_output_chan, kernel_size=3, padding="same")
-        self.horizontal_conv2 = nn.Conv1d(n_output_chan, n_output_chan, kernel_size=3, padding="same")
-
-        self.bn = nn.BatchNorm1d(n_output_chan)  # TODO: Use subspectralnorm
-        self.swish = nn.SiLU()
-        self.one_x_one_conv = nn.Conv1d(n_output_chan, n_output_chan, kernel_size=1)
+        self.f2 = nn.Sequential(
+            nn.Conv2d(n_chan, n_chan, kernel_size=(3, 1), padding="same", groups=n_chan),
+            # TODO: use subspectral norm instead
+            nn.BatchNorm2d(n_chan),
+        )
+        self.f1 = nn.Sequential(
+            nn.Conv2d(n_chan, n_chan, kernel_size=(1, 3), padding="same", groups=n_chan),
+            nn.BatchNorm2d(n_chan),
+            nn.SiLU(),
+            nn.Conv2d(n_chan, n_chan, kernel_size=1),
+            # TODO: Add dropout
+        )
+        self.activation = nn.ReLU()
 
     def forward(self, x):
-        if self.n_input_chan != self.n_output_chan:
-            x = self.scale_conv(x)
-            x = self.scale_bn(x)
-            x = F.relu(x)
-
         n_freq = x.shape[2]
+        x1 = self.f2(x)
 
-        y = self.vertical_conv1(x)
-        y = self.vertical_conv2(y)
-        y = torch.mean(y, dim=2)
-        y = self.horizontal_conv1(y)
-        y = self.horizontal_conv2(y)
+        x2 = torch.mean(x1, dim=2, keepdim=True)
+        x2 = self.f1(x2)
+        x2 = x2.repeat(1, 1, n_freq, 1)
 
-        y = self.bn(y)
-        y = self.swish(y)
-        y = self.one_x_one_conv(y)
-        
-        y = y.unsqueeze(2).repeat(1, 1, n_freq, 1)
+        return self.activation(x + x1 + x2)
 
-        return x + y
+
+class TransitionBlock(nn.Module):
+    def __init__(self, in_chan, out_chan, stride=1):
+        super().__init__()
+        self.f2 = nn.Sequential(
+            nn.Conv2d(in_chan, out_chan, kernel_size=(1, 1)),
+            nn.BatchNorm2d(out_chan),
+            nn.ReLU(),
+            nn.Conv2d(out_chan, out_chan, kernel_size=(3, 1), stride=(stride, 1), groups=out_chan),
+            # TODO: use subspectral norm instead
+            nn.BatchNorm2d(out_chan),
+        )
+
+        self.f1 = nn.Sequential(
+            nn.Conv2d(out_chan, out_chan, kernel_size=(1, 3), padding="same", groups=out_chan),
+            nn.BatchNorm2d(out_chan),
+            nn.SiLU(),
+            nn.Conv2d(out_chan, out_chan, kernel_size=1),
+            # TODO: Add dropout
+        )
+
+        self.activation = nn.ReLU()
+
+    def forward(self, x):
+        x = self.f2(x)
+        n_freq = x.shape[2]
+        x1 = torch.mean(x, dim=2, keepdim=True)
+        x1 = self.f1(x1)
+        x1 = x1.repeat(1, 1, n_freq, 1)
+
+        return self.activation(x + x1)
 
 
 class BcResNetModel(nn.Module):
@@ -54,26 +76,26 @@ class BcResNetModel(nn.Module):
 
         self.input_conv = nn.Conv2d(1, 6, kernel_size=(5, 5), stride=(2, 1))
 
-        self.m1 = MagicBlock(6, 3)
-        self.m2 = MagicBlock(3, 3)
-        self.m2 = MagicBlock(3, 1)
+        self.m1 = TransitionBlock(6, 3)
+        self.m2 = TransitionBlock(3, 3, stride=2)
+        self.m3 = NormalBlock(3)
+        self.m4 = TransitionBlock(3, 1)
         
         self.head = nn.Sequential(
-            nn.Linear(504, 256),
+            nn.Linear(140, 64),
             nn.ReLU(),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Linear(128, 35)
+            nn.Linear(64, 35)
         )
     
     def forward(self, x):
         x = self.input_conv(x)
 
         x = self.m1(x)
-        x = F.relu(x)
         x = self.m2(x)
+        x = self.m3(x)
+        x = self.m4(x)
         x = nn.Flatten()(x)
-        # print("flatten shape: ", x.shape)
+        # print("x shape:", x.shape)
         x = self.head(x)
         return F.log_softmax(x, dim=-1)
 
