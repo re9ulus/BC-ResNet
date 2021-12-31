@@ -41,11 +41,17 @@ class NormalBlock(nn.Module):
 class TransitionBlock(nn.Module):
     def __init__(self, in_chan, out_chan, stride=1):
         super().__init__()
+
+        if stride == 1:
+            conv = nn.Conv2d(out_chan, out_chan, kernel_size=(3, 1), groups=out_chan, padding="same")
+        else:
+            conv = nn.Conv2d(out_chan, out_chan, kernel_size=(3, 1), stride=(stride, 1), groups=out_chan, padding=(1, 0))
+
         self.f2 = nn.Sequential(
             nn.Conv2d(in_chan, out_chan, kernel_size=(1, 1)),
             nn.BatchNorm2d(out_chan),
             nn.ReLU(),
-            nn.Conv2d(out_chan, out_chan, kernel_size=(3, 1), stride=(stride, 1), groups=out_chan),
+            conv,
             # TODO: use subspectral norm instead
             nn.BatchNorm2d(out_chan),
         )
@@ -71,60 +77,57 @@ class TransitionBlock(nn.Module):
 
 
 class BcResNetModel(nn.Module):
-    def __init__(self):
+    def __init__(self, n_class=35):
         super().__init__()
 
-        self.input_conv = nn.Conv2d(1, 16, kernel_size=(5, 5), stride=(2, 1), dilation=1)
+        self.input_conv = nn.Conv2d(1, 16, kernel_size=(5, 5), stride=(2, 1), padding=2)
 
-        self.m1 = TransitionBlock(16, 8)  # dilation 1
-        self.m2 = NormalBlock(8)          # dilation 1
+        self.t1 = TransitionBlock(16, 8)
+        self.n11 = NormalBlock(8)
 
-        self.m3 = TransitionBlock(8, 12, stride=2)  # dilation (1, 2)
-        self.m4 = NormalBlock(12) 
+        self.t2 = TransitionBlock(8, 12, stride=2)  # dilation (1, 2)
+        self.n21 = NormalBlock(12) 
 
-        self.m5 = TransitionBlock(12, 16, stride=2)
-        self.m6 = NormalBlock(16)
-        self.m7 = NormalBlock(16)
-        self.m8 = NormalBlock(16)
+        self.t3 = TransitionBlock(12, 16, stride=2)
+        self.n31 = NormalBlock(16)
+        self.n32 = NormalBlock(16)
+        self.n33 = NormalBlock(16)
 
-        self.m9 = TransitionBlock(16, 20)  # dilation (1, 8)
-        self.m10 = NormalBlock(20)
-        self.m11 = NormalBlock(20)
-        self.m12 = NormalBlock(20)
+        self.t4 = TransitionBlock(16, 20)  # dilation (1, 8)
+        self.n41 = NormalBlock(20)
+        self.n42 = NormalBlock(20)
+        self.n43 = NormalBlock(20)
 
         self.dw_conv = nn.Conv2d(20, 20, kernel_size=(5, 5), dilation=1, groups=20)
         self.onexone_conv = nn.Conv2d(20, 32, kernel_size=1)
 
-        # self.m2 = TransitionBlock(3, 3, stride=2)
-        # self.m3 = NormalBlock(3)
-        # self.m4 = TransitionBlock(3, 1)
-        
-        self.head = nn.Sequential(
-            nn.Linear(896, 64),
-            nn.ReLU(),
-            nn.Linear(64, 35)
-        )
+        self.head_conv = nn.Conv2d(32, n_class, kernel_size=1)
     
     def forward(self, x):
         x = self.input_conv(x)
-        x = self.m1(x)
-        x = self.m2(x)
-        x = self.m3(x)
-        x = self.m4(x)
-        x = self.m5(x)
-        x = self.m6(x)
-        x = self.m7(x)
-        x = self.m8(x)
-        x = self.m9(x)
-        x = self.m10(x)
-        x = self.m11(x)
-        x = self.m12(x)
+        x = self.t1(x)
+        x = self.n11(x)
 
-        # x = self.dw_conv(x)
+        x = self.t2(x)
+        x = self.n21(x)
+
+        x = self.t3(x)
+        x = self.n31(x)
+        x = self.n32(x)
+        x = self.n33(x)
+
+        x = self.t4(x)
+        x = self.n41(x)
+        x = self.n42(x)
+        x = self.n43(x)
+
+        x = self.dw_conv(x)
         x = self.onexone_conv(x)
 
-        x = nn.Flatten()(x)
-        x = self.head(x)
+        x = torch.mean(x, dim=3, keepdim=True)
+        x = self.head_conv(x)
+
+        x = x.squeeze()
 
         return F.log_softmax(x, dim=-1)
 
