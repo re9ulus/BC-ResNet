@@ -74,29 +74,58 @@ class BcResNetModel(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.input_conv = nn.Conv2d(1, 6, kernel_size=(5, 5), stride=(2, 1))
+        self.input_conv = nn.Conv2d(1, 16, kernel_size=(5, 5), stride=(2, 1), dilation=1)
 
-        self.m1 = TransitionBlock(6, 3)
-        self.m2 = TransitionBlock(3, 3, stride=2)
-        self.m3 = NormalBlock(3)
-        self.m4 = TransitionBlock(3, 1)
+        self.m1 = TransitionBlock(16, 8)  # dilation 1
+        self.m2 = NormalBlock(8)          # dilation 1
+
+        self.m3 = TransitionBlock(8, 12, stride=2)  # dilation (1, 2)
+        self.m4 = NormalBlock(12) 
+
+        self.m5 = TransitionBlock(12, 16, stride=2)
+        self.m6 = NormalBlock(16)
+        self.m7 = NormalBlock(16)
+        self.m8 = NormalBlock(16)
+
+        self.m9 = TransitionBlock(16, 20)  # dilation (1, 8)
+        self.m10 = NormalBlock(20)
+        self.m11 = NormalBlock(20)
+        self.m12 = NormalBlock(20)
+
+        self.dw_conv = nn.Conv2d(20, 20, kernel_size=(5, 5), dilation=1, groups=20)
+        self.onexone_conv = nn.Conv2d(20, 32, kernel_size=1)
+
+        # self.m2 = TransitionBlock(3, 3, stride=2)
+        # self.m3 = NormalBlock(3)
+        # self.m4 = TransitionBlock(3, 1)
         
         self.head = nn.Sequential(
-            nn.Linear(140, 64),
+            nn.Linear(896, 64),
             nn.ReLU(),
             nn.Linear(64, 35)
         )
     
     def forward(self, x):
         x = self.input_conv(x)
-
         x = self.m1(x)
         x = self.m2(x)
         x = self.m3(x)
         x = self.m4(x)
+        x = self.m5(x)
+        x = self.m6(x)
+        x = self.m7(x)
+        x = self.m8(x)
+        x = self.m9(x)
+        x = self.m10(x)
+        x = self.m11(x)
+        x = self.m12(x)
+
+        # x = self.dw_conv(x)
+        x = self.onexone_conv(x)
+
         x = nn.Flatten()(x)
-        # print("x shape:", x.shape)
         x = self.head(x)
+
         return F.log_softmax(x, dim=-1)
 
 
