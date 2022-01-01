@@ -9,6 +9,8 @@ import get_data
 
 # TODO: Add dilation to conv
 
+DROPOUT = 0.4
+
 
 class NormalBlock(nn.Module):
     def __init__(self, n_chan):
@@ -23,7 +25,7 @@ class NormalBlock(nn.Module):
             nn.BatchNorm2d(n_chan),
             nn.SiLU(),
             nn.Conv2d(n_chan, n_chan, kernel_size=1),
-            # TODO: Add dropout
+            nn.Dropout2d(DROPOUT)
         )
         self.activation = nn.ReLU()
 
@@ -61,7 +63,7 @@ class TransitionBlock(nn.Module):
             nn.BatchNorm2d(out_chan),
             nn.SiLU(),
             nn.Conv2d(out_chan, out_chan, kernel_size=1),
-            # TODO: Add dropout
+            nn.Dropout2d(DROPOUT)
         )
 
         self.activation = nn.ReLU()
@@ -140,13 +142,13 @@ def pad_sequence(batch):
 
 def collate_fn(batch):
     new_sample_rate = 16000
-    # TODO: Use log mel_spec
-    to_mel = transforms.MelSpectrogram(sample_rate=16000, n_fft=1024, f_max=8000, n_mels=40)
+    to_mel = transforms.MelSpectrogram(sample_rate=new_sample_rate, n_fft=1024, f_max=8000, n_mels=40)
     tensors, targets = [], []
+    eps = 1e-9
     for waveform, sample_rate, label in batch:
         resample = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
 
-        tensors += [to_mel(resample(waveform))]
+        tensors += [(to_mel(resample(waveform)) + eps).log2()]
         targets += [get_data.label_to_idx(label)]
 
     tensors = pad_sequence(tensors)
