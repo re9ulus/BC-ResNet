@@ -7,13 +7,12 @@ from torchaudio import transforms
 import get_data
 # import subspectram_norm
 
-# TODO: Add dilation to conv
 
 DROPOUT = 0.4
 
 
 class NormalBlock(nn.Module):
-    def __init__(self, n_chan):
+    def __init__(self, n_chan, *, dilation=1):
         super().__init__()
         self.f2 = nn.Sequential(
             nn.Conv2d(n_chan, n_chan, kernel_size=(3, 1), padding="same", groups=n_chan),
@@ -21,7 +20,7 @@ class NormalBlock(nn.Module):
             nn.BatchNorm2d(n_chan),
         )
         self.f1 = nn.Sequential(
-            nn.Conv2d(n_chan, n_chan, kernel_size=(1, 3), padding="same", groups=n_chan),
+            nn.Conv2d(n_chan, n_chan, kernel_size=(1, 3), padding="same", groups=n_chan, dilation=(1, dilation)),
             nn.BatchNorm2d(n_chan),
             nn.SiLU(),
             nn.Conv2d(n_chan, n_chan, kernel_size=1),
@@ -41,7 +40,7 @@ class NormalBlock(nn.Module):
 
 
 class TransitionBlock(nn.Module):
-    def __init__(self, in_chan, out_chan, stride=1):
+    def __init__(self, in_chan, out_chan, *, dilation=1, stride=1):
         super().__init__()
 
         if stride == 1:
@@ -59,7 +58,7 @@ class TransitionBlock(nn.Module):
         )
 
         self.f1 = nn.Sequential(
-            nn.Conv2d(out_chan, out_chan, kernel_size=(1, 3), padding="same", groups=out_chan),
+            nn.Conv2d(out_chan, out_chan, kernel_size=(1, 3), padding="same", groups=out_chan, dilation=(1, dilation)),
             nn.BatchNorm2d(out_chan),
             nn.SiLU(),
             nn.Conv2d(out_chan, out_chan, kernel_size=1),
@@ -87,20 +86,20 @@ class BcResNetModel(nn.Module):
         self.t1 = TransitionBlock(16, 8)
         self.n11 = NormalBlock(8)
 
-        self.t2 = TransitionBlock(8, 12, stride=2)  # dilation (1, 2)
-        self.n21 = NormalBlock(12) 
+        self.t2 = TransitionBlock(8, 12, dilation=2, stride=2)
+        self.n21 = NormalBlock(12, dilation=2) 
 
-        self.t3 = TransitionBlock(12, 16, stride=2)
-        self.n31 = NormalBlock(16)
-        self.n32 = NormalBlock(16)
-        self.n33 = NormalBlock(16)
+        self.t3 = TransitionBlock(12, 16, dilation=4, stride=2)
+        self.n31 = NormalBlock(16, dilation=4)
+        self.n32 = NormalBlock(16, dilation=4)
+        self.n33 = NormalBlock(16, dilation=4)
 
-        self.t4 = TransitionBlock(16, 20)  # dilation (1, 8)
-        self.n41 = NormalBlock(20)
-        self.n42 = NormalBlock(20)
-        self.n43 = NormalBlock(20)
+        self.t4 = TransitionBlock(16, 20, dilation=8)
+        self.n41 = NormalBlock(20, dilation=8)
+        self.n42 = NormalBlock(20, dilation=8)
+        self.n43 = NormalBlock(20, dilation=8)
 
-        self.dw_conv = nn.Conv2d(20, 20, kernel_size=(5, 5), dilation=1, groups=20)
+        self.dw_conv = nn.Conv2d(20, 20, kernel_size=(5, 5), groups=20)
         self.onexone_conv = nn.Conv2d(20, 32, kernel_size=1)
 
         self.head_conv = nn.Conv2d(32, n_class, kernel_size=1)
