@@ -1,6 +1,5 @@
 import torch
 import torch.utils.data
-import baseline_model
 import bc_resnet_model
 import get_data
 import train
@@ -26,17 +25,8 @@ if __name__ == "__main__":
         pin_memory = False
 
     print(f"Device: {device}")
-
-    # model_name = "baseline"
-    model_name = "nope"
-    if model_name == "baseline":
-        print("Model: baseline")
-        model_module = baseline_model
-        model = baseline_model.M5().to(device)
-    else:
-        print("Model: bc-resnet")
-        model_module = bc_resnet_model
-        model = bc_resnet_model.BcResNetModel().to(device)
+    print("Model: bc-resnet")
+    model = bc_resnet_model.BcResNetModel().to(device)
 
     train_set = get_data.SubsetSC(subset="training")
     test_set = get_data.SubsetSC(subset="testing")
@@ -45,7 +35,7 @@ if __name__ == "__main__":
         train_set,
         batch_size=batch_size,
         shuffle=True,
-        collate_fn=model_module.collate_fn,
+        collate_fn=get_data.collate_fn,
         num_workers=num_workers,
         pin_memory=pin_memory
     )
@@ -54,7 +44,7 @@ if __name__ == "__main__":
         batch_size=batch_size,
         shuffle=False,
         drop_last=False,
-        collate_fn=model_module.collate_fn,
+        collate_fn=get_data.collate_fn,
         num_workers=num_workers,
         pin_memory=pin_memory
     )

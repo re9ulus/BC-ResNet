@@ -11,11 +11,7 @@ def train_epoch(model, optimizer, train_loader, device, epoch, log_interval):
         data = data.to(device)
 
         target = target.to(device)
-
-        # TODO: Apply transform in train_loader or collate_fn
-        # data = transform(data)
         output = model(data)
-
         loss = F.nll_loss(output.squeeze(), target)
 
         optimizer.zero_grad()

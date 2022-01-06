@@ -1,18 +1,13 @@
 import torch
-import torchaudio
 from torch import nn
 import torch.nn.functional as F
-from torchaudio import transforms
-
-import get_data
-# import subspectram_norm
 
 
-DROPOUT = 0.4
+DROPOUT = 0.1
 
 
 class NormalBlock(nn.Module):
-    def __init__(self, n_chan, *, dilation=1):
+    def __init__(self, n_chan, *, dilation=1, dropout=DROPOUT):
         super().__init__()
         self.f2 = nn.Sequential(
             nn.Conv2d(n_chan, n_chan, kernel_size=(3, 1), padding="same", groups=n_chan),
@@ -24,7 +19,7 @@ class NormalBlock(nn.Module):
             nn.BatchNorm2d(n_chan),
             nn.SiLU(),
             nn.Conv2d(n_chan, n_chan, kernel_size=1),
-            nn.Dropout2d(DROPOUT)
+            nn.Dropout2d(dropout)
         )
         self.activation = nn.ReLU()
 
@@ -40,7 +35,7 @@ class NormalBlock(nn.Module):
 
 
 class TransitionBlock(nn.Module):
-    def __init__(self, in_chan, out_chan, *, dilation=1, stride=1):
+    def __init__(self, in_chan, out_chan, *, dilation=1, stride=1, dropout=DROPOUT):
         super().__init__()
 
         if stride == 1:
@@ -62,7 +57,7 @@ class TransitionBlock(nn.Module):
             nn.BatchNorm2d(out_chan),
             nn.SiLU(),
             nn.Conv2d(out_chan, out_chan, kernel_size=1),
-            nn.Dropout2d(DROPOUT)
+            nn.Dropout2d(dropout)
         )
 
         self.activation = nn.ReLU()
@@ -131,26 +126,3 @@ class BcResNetModel(nn.Module):
         x = x.squeeze()
 
         return F.log_softmax(x, dim=-1)
-
-
-def pad_sequence(batch):
-    batch = [item.permute(2, 1, 0) for item in batch]
-    batch = torch.nn.utils.rnn.pad_sequence(batch, batch_first=True)
-    return batch.permute(0, 3, 2, 1) 
-
-
-def collate_fn(batch):
-    new_sample_rate = 16000
-    to_mel = transforms.MelSpectrogram(sample_rate=new_sample_rate, n_fft=1024, f_max=8000, n_mels=40)
-    tensors, targets = [], []
-    eps = 1e-9
-    for waveform, sample_rate, label in batch:
-        resample = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
-
-        tensors += [(to_mel(resample(waveform)) + eps).log2()]
-        targets += [get_data.label_to_idx(label)]
-
-    tensors = pad_sequence(tensors)
-    targets = torch.LongTensor(targets)
-
-    return tensors, targets

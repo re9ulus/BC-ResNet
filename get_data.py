@@ -1,4 +1,7 @@
 import os
+import numpy as np
+import torch
+from torchaudio import transforms
 from torchaudio.datasets import SPEECHCOMMANDS
 
 
@@ -66,19 +69,63 @@ LABELS = [
     'zero'
 ]
 
+
 _label_to_idx = {label: i for i, label in enumerate(LABELS)}
 _idx_to_label = {i: label for label, i in _label_to_idx.items()}
     
+
 def label_to_idx(label):
     return _label_to_idx[label]
 
+
 def idx_to_label(idx):
     return _idx_to_label[idx]
-    
-    
-if __name__ == "__main__":
-    train_set = SubsetSC(subset="training")
-    test_set = SubsetSC(subset="testing")
 
-    waveform, sample_rate, label = train_set[15000]
-    print(waveform.shape, sample_rate, label)
+
+def pad_sequence(batch):
+    batch = [item.permute(2, 1, 0) for item in batch]
+    batch = torch.nn.utils.rnn.pad_sequence(batch, batch_first=True)
+    return batch.permute(0, 3, 2, 1) 
+
+
+def collate_fn(batch):
+    new_sample_rate = 16000
+    to_mel = transforms.MelSpectrogram(sample_rate=new_sample_rate, n_fft=1024, f_max=8000, n_mels=40)
+    tensors, targets = [], []
+    eps = 1e-9
+    for waveform, sample_rate, label in batch:
+        resample = transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
+
+        tensors += [(to_mel(resample(waveform)) + eps).log2()]
+        targets += [label_to_idx(label)]
+
+    tensors = pad_sequence(tensors)
+    targets = torch.LongTensor(targets)
+
+    return tensors, targets
+
+
+# Test shift augmentation
+# where to put ??
+def collate_fn_train(batch):
+    new_sample_rate = 16000
+    to_mel = transforms.MelSpectrogram(sample_rate=new_sample_rate, n_fft=1024, f_max=8000, n_mels=40)
+    tensors, targets = [], []
+    eps = 1e-9
+    for waveform, sample_rate, label in batch:
+        resample = transforms.Resample(orig_freq=sample_rate, new_freq=new_sample_rate)
+
+        shift = np.random.randint(-1600, 1600)
+        waveform = torch.roll(waveform, shift)
+        if shift > 0:
+            waveform[:shift] = 0
+        elif shift < 0:
+            waveform[-shift:] = 0
+
+        tensors += [(to_mel(resample(waveform)) + eps).log2()]
+        targets += [label_to_idx(label)]
+
+    tensors = pad_sequence(tensors)
+    targets = torch.LongTensor(targets)
+
+    return tensors, targets
