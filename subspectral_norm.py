@@ -1,4 +1,4 @@
-# https://arxiv.org/pdf/2103.13620.pdf
+# https://arxiv.org/abs/2103.13620
 from torch import nn
 
 

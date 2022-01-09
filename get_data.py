@@ -11,24 +11,7 @@ EPS = 1e-9
 SAMPLE_RATE = 16000
 
 
-# “Yes”, “No”, “Up”, “Down”, “Left”, “Right”, “On”, “Off”, “Stop”, “Go”  + Unknown Word
-# labels from paper. Use only 10 labels and put other to "unknown word"
-# MERGED_LABELS = [
-#     'unknown word',
-
-#     'yes',
-#     'no',
-#     'up',
-#     'down',
-#     'right',
-#     'left',
-#     'on',
-#     'off',
-#     'stop',
-#     'go',
-# ]
-
-# default labels from dataset
+# default labels from GSC dataset
 DEFAULT_LABELS = [
     'backward',
     'bed',
@@ -158,15 +141,8 @@ class SubsetSC(SPEECHCOMMANDS):
         return log_mel, label
 
 
-
-
 _label_to_idx = {label: i for i, label in enumerate(DEFAULT_LABELS)}
-# _label_to_idx = {label: i for i, label in enumerate(MERGED_LABELS)}
 _idx_to_label = {i: label for label, i in _label_to_idx.items()}
-    
-
-# def label_to_idx(label):
-#     return _label_to_idx[label] if label in _label_to_idx else 0  # 0 match to unknown label
 
 
 def label_to_idx(label):

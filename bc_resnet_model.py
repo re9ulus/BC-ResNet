@@ -13,9 +13,6 @@ class NormalBlock(nn.Module):
         norm_layer = SubSpectralNorm(n_chan, 5) if use_subspectral else nn.BatchNorm2d(n_chan)
         self.f2 = nn.Sequential(
             nn.Conv2d(n_chan, n_chan, kernel_size=(3, 1), padding="same", groups=n_chan),
-            # TODO: use subspectral norm instead
-            # nn.BatchNorm2d(n_chan),
-            # SubSpectralNorm(n_chan, 5)
             norm_layer,
         )
         self.f1 = nn.Sequential(
@@ -54,9 +51,6 @@ class TransitionBlock(nn.Module):
             nn.ReLU(),
             conv,
             norm_layer,
-            # TODO: use subspectral norm instead
-            # nn.BatchNorm2d(out_chan),
-            # SubSpectralNorm(out_chan, 5)
         )
 
         self.f1 = nn.Sequential(
