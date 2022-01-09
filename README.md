@@ -45,7 +45,7 @@ up      0.00000
 You can found pretrained `model-sc-2.pt` model in `example_model` folder.
 
 ### Options and help
-Use
+Use help
 ```
 python main.py --help
 python main.py train --help
