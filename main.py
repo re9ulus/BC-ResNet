@@ -45,8 +45,7 @@ def cli():
 @click.option("--optimizer", type=str, default="adam", help="optimizer adam/sgd")
 @click.option("--dropout", type=float, default=0.1, help="dropout")
 @click.option("--subspectral-norm/--dropout-norm", type=bool, default=True, help="use SubspectralNorm or Dropout")
-@click.option("--n-class", type=int, default=35, help="number of classes to predict")
-def train_command(scale, batch_size, device, epoch, log_interval, checkpoint_file, optimizer, dropout, subspectral_norm, n_class):
+def train_command(scale, batch_size, device, epoch, log_interval, checkpoint_file, optimizer, dropout, subspectral_norm):
     if os.path.exists(checkpoint_file):
         raise FileExistsError(f"{checkpoint_file} already exists")
 
@@ -59,7 +58,13 @@ def train_command(scale, batch_size, device, epoch, log_interval, checkpoint_fil
 
     print(f"Device: {device}")
     print(f"Use subspectral norm: {subspectral_norm}")
-    model = bc_resnet_model.BcResNetModel(n_class=n_class, scale=scale, dropout=dropout, use_subspectral=subspectral_norm).to(device)
+
+    model = bc_resnet_model.BcResNetModel(
+        n_class=get_data.N_CLASS,
+        scale=scale,
+        dropout=dropout,
+        use_subspectral=subspectral_norm,
+    ).to(device)
 
     train_loader = torch.utils.data.DataLoader(
         get_data.SubsetSC(subset="training"),
@@ -95,7 +100,7 @@ def train_command(scale, batch_size, device, epoch, log_interval, checkpoint_fil
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.001)
         scheduler = None
     else:
-        raise ValueError("fUnknown optimizer {optimizer}, use adam/sgd")
+        raise ValueError(f"Unknown optimizer {optimizer}, use adam/sgd")
 
     run(
         model,
@@ -118,8 +123,7 @@ def train_command(scale, batch_size, device, epoch, log_interval, checkpoint_fil
 @click.option("--device", type=str, default=util.get_device(), help="`cuda` or `cpu`")
 @click.option("--dropout", type=float, default=0.1, help="dropout")
 @click.option("--subspectral-norm/--dropout-norm", type=bool, default=True, help="use SubspectralNorm or Dropout")
-@click.option("--n-class", type=int, default=35, help="number of classes to predict")
-def test_command(model_file, scale, batch_size, device, dropout, subspectral_norm, n_class):
+def test_command(model_file, scale, batch_size, device, dropout, subspectral_norm):
     if not os.path.exists(model_file):
         raise FileExistsError(f"model {model_file} not exists")
 
@@ -132,7 +136,13 @@ def test_command(model_file, scale, batch_size, device, dropout, subspectral_nor
 
     print(f"Device: {device}")
     print(f"Use subspectral norm: {subspectral_norm}")
-    model = bc_resnet_model.BcResNetModel(n_class=n_class, scale=scale, dropout=dropout, use_subspectral=subspectral_norm).to(device)
+
+    model = bc_resnet_model.BcResNetModel(
+        n_class=get_data.N_CLASS,
+        scale=scale,
+        dropout=dropout,
+        use_subspectral=subspectral_norm,
+    ).to(device)
     model.load_state_dict(torch.load(model_file))
 
     test_loader = torch.utils.data.DataLoader(
@@ -155,14 +165,18 @@ def test_command(model_file, scale, batch_size, device, dropout, subspectral_nor
 @click.option("--device", type=str, default=util.get_device(), help="`cuda` or `cpu`")
 @click.option("--dropout", type=float, default=0.1, help="dropout")
 @click.option("--subspectral-norm/--dropout-norm", type=bool, default=True, help="use SubspectralNorm or Dropout")
-@click.option("--n-class", type=int, default=35, help="number of classes to predict")
-def apply_command(model_file, wav_file, scale, device, dropout, subspectral_norm, n_class):
+def apply_command(model_file, wav_file, scale, device, dropout, subspectral_norm):
     if not os.path.exists(model_file):
         raise FileExistsError(f"model file {model_file} not exists")
     if not os.path.exists(wav_file):
         raise FileExistsError(f"sound file {wav_file} not exists")
 
-    model = bc_resnet_model.BcResNetModel(n_class=n_class, scale=scale, dropout=dropout, use_subspectral=subspectral_norm).to(device)
+    model = bc_resnet_model.BcResNetModel(
+        n_class=get_data.N_CLASS,
+        scale=scale,
+        dropout=dropout,
+        use_subspectral=subspectral_norm,
+    ).to(device)
     model.load_state_dict(torch.load(model_file))
     model.eval()
 

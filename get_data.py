@@ -50,6 +50,8 @@ DEFAULT_LABELS = [
     'zero'
 ]
 
+N_CLASS = len(DEFAULT_LABELS)
+
 
 def prepare_wav(waveform, sample_rate):
     if sample_rate != SAMPLE_RATE: 
