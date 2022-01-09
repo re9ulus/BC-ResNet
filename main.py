@@ -11,7 +11,6 @@ import apply
 import util
 
 
-
 def run(model, train_loader, validation_loader, test_loader, optimizer, scheduler, device, checkpoint_file, n_epoch=10, log_interval=100):
     best_score = 0
     best_model = copy.deepcopy(model)
