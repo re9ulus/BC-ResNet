@@ -1,11 +1,15 @@
-# from https://arxiv.org/pdf/2103.13620.pdf
+# https://arxiv.org/pdf/2103.13620.pdf
+from torch import nn
 
-def SubspectralNorm(x, gamma, beta, S, eps=1e-5):
-    N, C, F, T = x.size()
-    x = x.view(N, C*S, F//S, T)
 
-    mean = x.mean([0, 2, 3]).view([1, C*S, 1, 1])
-    var = x.var([0, 2, 3]).view([1, C*S, 1, 1])
-    x = gamma * (x - mean) / (var + eps).sqrt() + beta
+class SubSpectralNorm(nn.Module):
+    def __init__(self, channels, sub_bands, eps=1e-5):
+        super().__init__()
+        self.sub_bands = sub_bands
+        self.bn = nn.BatchNorm2d(channels*sub_bands, eps=eps)
 
-    return x.view(N, C, F, T)
+    def forward(self, x):
+        N, C, F, T = x.size()
+        x = x.view(N, C * self.sub_bands, F // self.sub_bands, T)
+        x = self.bn(x)
+        return x.view(N, C, F, T)

@@ -1,5 +1,3 @@
-import torchaudio
-from torch import nn
 import torch.nn.functional as F
 
 
@@ -26,11 +24,9 @@ def train_epoch(model, optimizer, train_loader, device, epoch, log_interval):
     return losses
 
 
-def train(n_epoch, model, optimizer, train_loader, device, log_interval, scheduler=None):
+def train(n_epoch, model, optimizer, train_loader, device, log_interval):
     print(f"--- Start train {n_epoch} epoches")
     for epoch in range(n_epoch):
         print(f"--- Start epoch {epoch+1}")
         train_epoch(model, optimizer, train_loader, device, epoch, log_interval)
-        if scheduler:
-            scheduler.step()
     print("--- Done train")
