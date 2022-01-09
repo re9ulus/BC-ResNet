@@ -4,8 +4,6 @@ Unofficial implementation of [Broadcasted Residual Learning for Efficient Keywor
 
 # TODO:
 - add specaug to train
-- add requirements.txt
-- add jupyter demo
 - add model weights
 
 
@@ -40,6 +38,7 @@ Apply
 ```
 ; apply saved model to wav file
 python main.py apply --scale 2 --model-file model-sc-2.pt --wav-file SpeechCommands/speech_commands_v0.02/seven/5744b6a7_nohash_0.wav
+
 seven   0.99977
 six     0.00011
 stop    0.00008
@@ -47,23 +46,13 @@ happy   0.00002
 up      0.00000
 ```
 
-### Options
+### Options and help
+Use
 ```
 python main.py --help
-
-Options:
-  --scale INTEGER                 model width will be multiplied by scale
-  --batch-size INTEGER            batch size
-  --device TEXT                   `cuda` or `cpu`
-  --epoch INTEGER                 number of epochs to train
-  --log-interval INTEGER          display train loss after every `log-
-                                  interval` batch
-  --checkpoint-file TEXT          file to save model checkpoint
-  --optimizer TEXT                optimizer adam/sgd
-  --dropout FLOAT                 dropout
-  --subspectral-norm / --dropout-norm
-                                  Use SubspectralNorm or Dropout
-  --help                          Show this message and exit.
+python main.py train --help
+python main.py test --help
+python main.py apply --help
 ```
 
 This implementation use all 35 labels from Google Speech Commands Dataset. Original paper use 10 commands and additional re-balanced "Unknown word" and "Silence" labels (section 4.1 in paper).
