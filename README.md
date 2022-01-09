@@ -1,14 +1,10 @@
 # BC-ResNet for Keyword Spotting
-
 Unofficial implementation of [Broadcasted Residual Learning for Efficient Keyword Spotting](https://arxiv.org/abs/2106.04140)
 
 # TODO:
 - add specaug to train
-- add model weights
-
 
 ### Usage
-
 Train
 ```
 ; train scaled 2 times model for 50 epochs and save best checkpoint to model-sc-2.pt
